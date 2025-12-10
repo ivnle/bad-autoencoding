@@ -145,6 +145,28 @@ This document collects claims about DeepSeek-OCR's potential for context compres
 
 ---
 
+### Hacker News Discussion
+
+**Date:** 2025-10 · **Platform:** Hacker News
+
+**Context:** Community discussion threads about DeepSeek-OCR, with many commenters focusing on the context compression implications rather than OCR quality.
+
+> "The implication for LLMs is that we don't need 1000 tokens and 1000 token embeddings to produce the 1001st token, if we can figure out how to compress them into a 10x smaller latent representation first."
+— [intalentive](https://news.ycombinator.com/item?id=45649955)
+
+> "Exactly right, the OCR isn't the interesting part. 10x context compression is potentially huge."
+— [hendersoon](https://news.ycombinator.com/item?id=45651976)
+
+> "The paper is more interesting than just another VLM for OCR, they start talking about compression and stuff... (I guess you could say a picture token is worth 10 textual tokens...)"
+— [krackers](https://news.ycombinator.com/item?id=45640720)
+
+> "It seems crazy to me that image inputs (of text) are smaller and more information dense than text - is that really true?"
+— [sd9](https://news.ycombinator.com/item?id=45680739)
+
+[Main thread](https://news.ycombinator.com/item?id=45640594) · [Karpathy thread](https://news.ycombinator.com/item?id=45658928)
+
+---
+
 <!-- TODO: Watch video and extract relevant quotes
 ### Sam Witteveen — YouTube
 
