@@ -28,23 +28,18 @@ def generate_run_name(
     # Meanpool regime params
     compression_window_size: Optional[int] = None,
     compression_stride: Optional[int] = None,
-    # Subsample regime params
-    subsample_count: Optional[int] = None,
-    subsample_strategy: Optional[str] = None,
-    # Random projection params
-    projection_dim: Optional[int] = None,
-    train_encoder: Optional[bool] = None,
     # Conv1D regime params
     compression_target: Optional[int] = None,
     conv_kernel: Optional[int] = None,
+    train_encoder: Optional[bool] = None,
     # Hybrid mode (vision, meanpool, conv1d_residual)
     hybrid_text_tokens: Optional[int] = None,
 ) -> str:
     """Generate consistent run name for output directory and W&B.
 
     Args:
-        regime: Training regime (vision, text, meanpool, subsample, randproj,
-               conv1d, conv1d_residual, conv1d_residual_auxloss)
+        regime: Training regime (vision, text, meanpool, conv1d_residual,
+               conv1d_residual_auxloss)
         objective: Training objective (lm or reconstruction)
         timestamp: Timestamp string (YYYYMMDD_HHMMSS). If None, auto-generated.
         **kwargs: Regime-specific parameters
@@ -87,33 +82,6 @@ def generate_run_name(
             raise ValueError("compression_window_size and compression_stride required for meanpool regime")
         name_parts.append(f'w{compression_window_size}')
         name_parts.append(f's{compression_stride}')
-        if hybrid_text_tokens and hybrid_text_tokens > 0:
-            name_parts.append(f'hybrid{hybrid_text_tokens}')
-
-    elif regime == 'subsample':
-        # Subsample regime: include subsample count and strategy
-        if subsample_count is None or subsample_strategy is None:
-            raise ValueError("subsample_count and subsample_strategy required for subsample regime")
-        name_parts.append(f'n{subsample_count}')
-        name_parts.append(subsample_strategy)
-
-    elif regime == 'randproj':
-        # Random projection regime: include projection dimension and trainability
-        # UNIFIED: Always include trainability suffix (bash previously omitted 'frozen')
-        if projection_dim is None:
-            raise ValueError("projection_dim required for randproj regime")
-        if train_encoder is None:
-            raise ValueError("train_encoder required for randproj regime")
-        name_parts.append(f'd{projection_dim}')
-        name_parts.append('trainable' if train_encoder else 'frozen')
-
-    elif regime == 'conv1d':
-        # Conv1D regime: include compression target and kernel size
-        # UNIFIED: Use 't' prefix (bash convention)
-        if compression_target is None or conv_kernel is None:
-            raise ValueError("compression_target and conv_kernel required for conv1d regime")
-        name_parts.append(f't{compression_target}')
-        name_parts.append(f'k{conv_kernel}')
         if hybrid_text_tokens and hybrid_text_tokens > 0:
             name_parts.append(f'hybrid{hybrid_text_tokens}')
 
@@ -211,16 +179,10 @@ def generate_from_args(args: argparse.Namespace) -> tuple[Path, str]:
         kwargs['compression_window_size'] = args.compression_window_size
         kwargs['compression_stride'] = args.compression_stride
         kwargs['hybrid_text_tokens'] = args.hybrid_text_tokens
-    elif args.regime == 'subsample':
-        kwargs['subsample_count'] = args.subsample_count
-        kwargs['subsample_strategy'] = args.subsample_strategy
-    elif args.regime == 'randproj':
-        kwargs['projection_dim'] = args.projection_dim
-        kwargs['train_encoder'] = args.train_encoder
-    elif args.regime in ['conv1d', 'conv1d_residual', 'conv1d_residual_auxloss']:
+    elif args.regime in ['conv1d_residual', 'conv1d_residual_auxloss']:
         kwargs['compression_target'] = args.compression_target
         kwargs['conv_kernel'] = args.conv_kernel
-        if args.regime in ['conv1d', 'conv1d_residual']:
+        if args.regime == 'conv1d_residual':
             kwargs['hybrid_text_tokens'] = args.hybrid_text_tokens
 
     run_name = generate_run_name(**kwargs)

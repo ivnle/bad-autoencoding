@@ -86,10 +86,25 @@ See `scripts/run_example.sh` for more training configurations, or run `python tr
 | `vision` | DeepSeek-OCR vision compression (renders text as image) |
 | `text` | Text baseline (no compression) |
 | `meanpool` | Sliding window mean pooling |
-| `subsample` | Token subsampling |
-| `randproj` | Random projection compression |
-| `conv1d` | 1D convolutional pyramid |
 | `conv1d_residual` | Conv1d with residual skip connections |
+| `conv1d_residual_auxloss` | Conv1d with residual + auxiliary losses (reconstruction only) |
+
+### Text Regime Truncation
+
+The `text` regime supports context truncation via `--text_context_tokens N`:
+- Keeps the **last** N tokens of context (most recent)
+- Default (omit flag) = full context, no truncation
+- `--text_context_tokens 0` = empty context (target-only)
+
+Example:
+```bash
+uv run python train.py \
+    --regime text \
+    --text_context_tokens 512 \
+    --data_path ./data/training/full/train.jsonl \
+    --val_data_path ./data/training/full/val.jsonl \
+    --output_dir ./outputs/text_truncated_512
+```
 
 ## Requirements
 

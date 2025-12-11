@@ -43,9 +43,6 @@ from trainers import (
     VisionCompressionTrainer,
     TextBaselineTrainer,
     MeanPoolCompressionTrainer,
-    SubsampleCompressionTrainer,
-    RandomProjectionCompressionTrainer,
-    Conv1dPyramidCompressionTrainer,
     Conv1dResidualCompressionTrainer,
     BasicImageTransform,
     get_gpu_memory_mb,
@@ -730,7 +727,7 @@ def text_collate_fn(batch):
 
 
 def compression_collate_fn(batch):
-    """Collate function for compression regimes (meanpool, subsample)
+    """Collate function for compression regimes (meanpool, conv1d_residual, etc.)
 
     Keeps context and continuation separate (not concatenated) so the trainer
     can choose which to use based on objective (lm vs reconstruction).
@@ -1006,7 +1003,7 @@ def train_epoch(
 
             loss, labels = trainer.forward(image, target, hybrid_text, objective=objective)
 
-        elif regime in ['text', 'meanpool', 'subsample', 'randproj', 'conv1d', 'conv1d_residual', 'conv1d_residual_auxloss']:
+        elif regime in ['text', 'meanpool', 'conv1d_residual', 'conv1d_residual_auxloss']:
             # Text-based regimes: extract context and target from batch
             context = batch['context'] if 'context' in batch else None
             continuation = batch['continuation'] if 'continuation' in batch else None
@@ -1317,9 +1314,7 @@ def evaluate(
     # Qualitative evaluation
     qualitative_samples = []
 
-    # Create generator for deterministic random subsampling (validation only)
-    # Use CPU device to match where context_tokens are when _subsample() is called
-    # (tensors are moved to GPU after subsampling, see trainers/subsample.py)
+    # Create generator for deterministic random operations (validation only)
     eval_generator = torch.Generator(device='cpu')
     eval_generator.manual_seed(eval_seed)
 
@@ -1340,7 +1335,7 @@ def evaluate(
 
                 loss, _ = trainer.forward(image, target, hybrid_text, objective=objective)
 
-            elif regime in ['text', 'meanpool', 'subsample', 'randproj', 'conv1d', 'conv1d_residual', 'conv1d_residual_auxloss']:
+            elif regime in ['text', 'meanpool', 'conv1d_residual', 'conv1d_residual_auxloss']:
                 # Text-based regimes: extract context and target from batch
                 context = batch['context']
                 continuation = batch['continuation']
@@ -1352,12 +1347,10 @@ def evaluate(
                 else:  # reconstruction
                     target = context
 
-                # Pass hybrid_text for regimes that support it, generator for subsample
+                # Pass hybrid_text for regimes that support it
                 if regime in ['meanpool', 'conv1d_residual']:
                     loss, _ = trainer.forward(context, target, hybrid_text, objective=objective)
-                elif regime == 'subsample':
-                    loss, _ = trainer.forward(context, target, objective=objective, generator=eval_generator)
-                else:  # text, randproj, conv1d, conv1d_residual_auxloss
+                else:  # text, conv1d_residual_auxloss
                     loss, _ = trainer.forward(context, target, objective=objective)
 
             total_loss += loss.item()
@@ -1408,7 +1401,7 @@ def evaluate(
                             skip_special_tokens=True
                         )
 
-                    elif regime in ['meanpool', 'subsample', 'randproj', 'conv1d', 'conv1d_residual', 'conv1d_residual_auxloss']:
+                    elif regime in ['meanpool', 'conv1d_residual', 'conv1d_residual_auxloss']:
                         # Compression regimes: extract context from batch
                         context_tokens = batch['context'][sample_idx]
 
@@ -1420,27 +1413,12 @@ def evaluate(
                                 sample_hybrid = hybrid_text_batch[sample_idx]
 
                         # Decode context for logging (show compressed representation)
-                        # Generate text (subsample needs generator, meanpool/conv1d_residual need hybrid_text)
+                        # Generate text (meanpool/conv1d_residual need hybrid_text)
                         if regime == 'meanpool':
                             context_prompt = f"[Mean pooled from {context_tokens.shape[0]} tokens]"
                             generated_text = trainer.generate_text(
                                 context_tokens,
                                 hybrid_text_tokens=sample_hybrid,
-                                max_new_tokens=max_generation_tokens,
-                                temperature=0.0  # Greedy for consistency
-                            )
-                        elif regime == 'subsample':
-                            context_prompt = f"[Subsampled from {context_tokens.shape[0]} tokens]"
-                            generated_text = trainer.generate_text(
-                                context_tokens,
-                                max_new_tokens=max_generation_tokens,
-                                temperature=0.0,  # Greedy for consistency
-                                generator=eval_generator
-                            )
-                        elif regime == 'conv1d':
-                            context_prompt = f"[Conv1D compressed from {context_tokens.shape[0]} tokens]"
-                            generated_text = trainer.generate_text(
-                                context_tokens,
                                 max_new_tokens=max_generation_tokens,
                                 temperature=0.0  # Greedy for consistency
                             )
@@ -1452,15 +1430,8 @@ def evaluate(
                                 max_new_tokens=max_generation_tokens,
                                 temperature=0.0  # Greedy for consistency
                             )
-                        elif regime == 'conv1d_residual_auxloss':
+                        else:  # conv1d_residual_auxloss
                             context_prompt = f"[Conv1D Residual+AuxLoss compressed from {context_tokens.shape[0]} tokens]"
-                            generated_text = trainer.generate_text(
-                                context_tokens,
-                                max_new_tokens=max_generation_tokens,
-                                temperature=0.0  # Greedy for consistency
-                            )
-                        else:  # randproj
-                            context_prompt = f"[Random projected from {context_tokens.shape[0]} tokens]"
                             generated_text = trainer.generate_text(
                                 context_tokens,
                                 max_new_tokens=max_generation_tokens,
@@ -1751,29 +1722,7 @@ def main(args):
         if args.compression_stride < 1:
             raise ValueError(f"--compression_stride must be >= 1, got {args.compression_stride}")
 
-    # Validate subsample compression parameters
-    if args.regime == 'subsample':
-        if args.subsample_count is None:
-            raise ValueError("--subsample_count is required when regime=subsample")
-        if args.subsample_count < 1 or args.subsample_count > 1000:
-            raise ValueError(f"--subsample_count must be 1-1000, got {args.subsample_count}")
-
-    # Validate random projection parameters
-    if args.regime == 'randproj':
-        if args.projection_dim is None:
-            raise ValueError("--projection_dim is required when regime=randproj")
-        if args.projection_dim < 1 or args.projection_dim > 1000:
-            raise ValueError(f"--projection_dim must be 1-1000, got {args.projection_dim}")
-
-    # Validate conv1d compression parameters
-    if args.regime == 'conv1d':
-        validate_conv1d_params(
-            args.compression_target,
-            args.conv_kernel,
-            regime='conv1d'
-        )
-
-    # Validate conv1d_residual compression parameters (same as conv1d)
+    # Validate conv1d_residual compression parameters
     if args.regime == 'conv1d_residual':
         validate_conv1d_params(
             args.compression_target,
@@ -1826,7 +1775,7 @@ def main(args):
     if args.regime == 'text' and args.objective == 'reconstruction':
         raise ValueError(
             "Text regime does not support reconstruction objective. "
-            "Use subsample regime instead for reconstructing from subsampled tokens."
+            "Use a compression regime (meanpool, conv1d_residual) for reconstruction."
         )
 
     # Resolve vision prompt (preset key or custom string)
@@ -1849,9 +1798,9 @@ def main(args):
         logger.warning("--vision_prompt is ignored when regime != 'vision'.")
 
     # Normalize train_encoder for regimes where it's not applicable
-    # meanpool/subsample: only have separator embedding (always trained), no compression module
+    # meanpool: only has separator embedding (always trained), no compression module
     # Setting to False ensures wandb logs reflect reality and optimizer uses single param group
-    if args.regime in ['meanpool', 'subsample']:
+    if args.regime == 'meanpool':
         if args.train_encoder:
             logger.info(
                 f"Setting train_encoder=False for {args.regime} regime "
@@ -1988,41 +1937,6 @@ def main(args):
         )
         logger.info(f"Created Mean Pool Compression trainer")
         logger.info(f"  Compression: 1000 → {trainer.compressed_tokens} tokens")
-
-    elif args.regime == 'subsample':
-        trainer = SubsampleCompressionTrainer(
-            model, tokenizer,
-            subsample_count=args.subsample_count,
-            subsample_strategy=args.subsample_strategy,
-            device=args.device
-        )
-        logger.info("Created Subsample Compression trainer")
-        logger.info(f"  Strategy: {args.subsample_strategy}")
-        logger.info(f"  Keeping {args.subsample_count} tokens")
-        logger.info(f"  Compression: 1000 → {trainer.compressed_tokens} tokens")
-
-    elif args.regime == 'randproj':
-        trainer = RandomProjectionCompressionTrainer(
-            model, tokenizer,
-            projection_dim=args.projection_dim,
-            train_encoder=args.train_encoder,
-            device=args.device
-        )
-        logger.info("Created Random Projection Compression trainer")
-        trainability = 'trainable' if args.train_encoder else 'frozen (Johnson-Lindenstrauss)'
-        logger.info(f"  Projection matrix: {trainability}")
-        logger.info(f"  Compression: 1000 → {trainer.compressed_tokens} tokens")
-
-    elif args.regime == 'conv1d':
-        trainer = Conv1dPyramidCompressionTrainer(
-            model, tokenizer,
-            compression_target=args.compression_target,
-            conv_kernel=args.conv_kernel,
-            device=args.device
-        )
-        logger.info("Created Conv1D Pyramid Compression trainer")
-        logger.info(f"  Kernel size: {args.conv_kernel}")
-        logger.info(f"  Compression: 1000 → {trainer.compressed_tokens} tokens ({1000/args.compression_target:.2f}x)")
 
     elif args.regime == 'conv1d_residual':
         trainer = Conv1dResidualCompressionTrainer(
@@ -2163,7 +2077,7 @@ def main(args):
             )
             collate_fn = vision_collate_fn
         else:
-            # Text, meanpool, subsample, and randproj use TextBaselineDataset with compression_collate_fn
+            # Text and compression regimes use TextBaselineDataset with compression_collate_fn
             # (keeps context/continuation separate for objective-based selection)
             # Determine if hybrid mode applies to current regime
             hybrid_tokens = args.hybrid_text_tokens if args.regime in ['meanpool', 'conv1d_residual'] else 0
@@ -2273,7 +2187,7 @@ def main(args):
             if collate_fn is None:
                 collate_fn = compression_collate_fn
         else:
-            # Meanpool, subsample, conv1d_residual, and other compression regimes
+            # Meanpool, conv1d_residual, and other compression regimes
             # Determine if hybrid mode applies to current regime
             val_hybrid_tokens = args.hybrid_text_tokens if args.regime in ['meanpool', 'conv1d_residual'] else 0
 

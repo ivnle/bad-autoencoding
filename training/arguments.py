@@ -15,14 +15,11 @@ def create_argument_parser() -> argparse.ArgumentParser:
 
     # Required arguments (unless resuming from checkpoint)
     parser.add_argument('--regime', type=str, required=False,
-                       choices=['vision', 'text', 'meanpool', 'subsample', 'randproj', 'conv1d', 'conv1d_residual', 'conv1d_residual_auxloss'],
+                       choices=['vision', 'text', 'meanpool', 'conv1d_residual', 'conv1d_residual_auxloss'],
                        help='Training regime: '
                             'vision (DeepSeek-OCR vision compression), '
                             'text (text baseline), '
                             'meanpool (sliding window mean pooling), '
-                            'subsample (token subsampling), '
-                            'randproj (random projection compression), '
-                            'conv1d (1d convolutional pyramid compression), '
                             'conv1d_residual (1d conv pyramid with residual skip connections)')
     parser.add_argument('--data_path', type=str, required=False,
                        help='Path to training data (JSONL format). Required for training, not needed for --validation_only')
@@ -64,19 +61,17 @@ def create_argument_parser() -> argparse.ArgumentParser:
                        help='Train the encoder/compression module (default: True). '
                             'For vision regime: trains SAM+ViT+Projector (~4.4 GB additional VRAM). '
                             'For conv1d regimes: trains the conv pyramid. '
-                            'For randproj: trains the projection matrix. '
                             'Use with --encoder_lr to set differential learning rate.')
     parser.add_argument('--no-train-encoder', action='store_false', dest='train_encoder',
                        help='Freeze encoder/compression module. '
-                            'For vision regime: use pretrained vision encoder as-is. '
-                            'For randproj: true Johnson-Lindenstrauss (frozen random projection).')
+                            'For vision regime: use pretrained vision encoder as-is.')
     parser.set_defaults(train_encoder=True)
     parser.add_argument('--encoder_lr', type=float, default=1e-5,
                        help='Learning rate for vision encoder when --train_encoder is set. '
                             'Default 1e-5 (10x smaller than decoder to prevent catastrophic forgetting). '
                             'Only effective when --train_encoder is enabled.')
 
-    # Compression settings (for meanpool and subsample regimes)
+    # Compression settings (for meanpool regime)
     parser.add_argument('--compression_window_size', type=int, default=9,
                        help='For meanpool regime: sliding window size for mean pooling. '
                             'Compressed tokens depend on both window_size and stride. '
@@ -86,26 +81,11 @@ def create_argument_parser() -> argparse.ArgumentParser:
                             'stride=window_size gives no overlap (fastest). '
                             'stride<window_size gives overlap (richer context). '
                             '(default: 9)')
-    parser.add_argument('--subsample_strategy', type=str, default='regular',
-                       choices=['regular', 'random'],
-                       help='For subsample regime: sampling strategy. '
-                            'regular = deterministic evenly-spaced positions, '
-                            'random = stochastic random positions (order preserved). '
-                            '(default: regular)')
-    parser.add_argument('--subsample_count', type=int, required=False,
-                       help='For subsample regime: number of tokens to keep (required when regime=subsample). '
-                            'Example: --subsample_count 100 keeps 100 tokens.')
-    parser.add_argument('--projection_dim', type=int, required=False,
-                       help='For randproj regime: number of projected dimensions (required when regime=randproj). '
-                            'Example: --projection_dim 111 projects to 111 tokens for ~9x compression matching vision-small.')
-    parser.add_argument('--train_projection', action='store_true',
-                       help='For randproj regime: make projection matrix trainable (default: frozen like Johnson-Lindenstrauss). '
-                            'Checkpoints support switching between frozen/trainable.')
     parser.add_argument('--compression_target', type=int, required=False,
-                       help='For conv1d/conv1d_residual/conv1d_residual_auxloss regimes: target number of compressed tokens (required for these regimes). '
+                       help='For conv1d_residual/conv1d_residual_auxloss regimes: target number of compressed tokens (required for these regimes). '
                             'Example: --compression_target 111 to match vision-small compression.')
     parser.add_argument('--conv_kernel', type=int, default=5,
-                       help='For conv1d/conv1d_residual/conv1d_residual_auxloss regimes: kernel size for convolutional layers (default: 5). '
+                       help='For conv1d_residual/conv1d_residual_auxloss regimes: kernel size for convolutional layers (default: 5). '
                             'Must be odd. Larger kernels capture more local context.')
 
     # Timestamp (for consistent naming with shell script)

@@ -242,11 +242,8 @@ def peek_checkpoint_metadata(checkpoint_path: Path, logger):
         'conv_kernel': ckpt_args.get('conv_kernel'),
         'vision_mode': ckpt_args.get('vision_mode'),
         'hybrid_text_tokens': ckpt_args.get('hybrid_text_tokens'),
-        'projection_dim': ckpt_args.get('projection_dim'),
         'compression_window_size': ckpt_args.get('compression_window_size'),
         'compression_stride': ckpt_args.get('compression_stride'),
-        'subsample_count': ckpt_args.get('subsample_count'),
-        'subsample_strategy': ckpt_args.get('subsample_strategy'),
     }
 
     logger.info(
@@ -407,25 +404,24 @@ def load_checkpoint(checkpoint_path: Path, model, optimizer=None, scheduler=None
     try:
         model.load_state_dict(checkpoint_state_dict)
     except RuntimeError as e:
-        # Handle old checkpoints that don't have separator/randproj/encoder parameters
+        # Handle old checkpoints that don't have separator/encoder parameters
         error_msg = str(e)
 
         # Check for known missing/unexpected key patterns
         has_separator = 'separator' in error_msg
-        has_randproj = 'randproj_matrix' in error_msg
         has_conv1d = 'conv1d_pyramid' in error_msg or 'conv1d_residual_pyramid' in error_msg
         has_encoder = ('sam_model' in error_msg or 'vision_model' in error_msg or
                       'projector' in error_msg or 'image_newline' in error_msg or
                       'view_seperator' in error_msg)
 
-        if has_separator or has_randproj or has_conv1d or has_encoder:
+        if has_separator or has_conv1d or has_encoder:
             logger.warning("Checkpoint architecture mismatch detected - loading with strict=False")
 
             # Load with strict=False to skip missing/unexpected parameters
             missing_keys, unexpected_keys = model.load_state_dict(checkpoint_state_dict, strict=False)
 
             # Log missing regime-specific keys (model lacks these, checkpoint may have them)
-            regime_missing = [k for k in missing_keys if ('separator' in k or 'randproj_matrix' in k or
+            regime_missing = [k for k in missing_keys if ('separator' in k or
                                                           'conv1d_pyramid' in k or 'conv1d_residual_pyramid' in k)]
             if regime_missing:
                 logger.info(f"Initialized new parameters (not in checkpoint): {', '.join(regime_missing)}")
@@ -617,7 +613,7 @@ def validate_and_load_init_checkpoint(checkpoint_metadata, args, logger):
         )
 
     # Validate regime-specific hyperparameters
-    if args.regime in ['conv1d', 'conv1d_residual', 'conv1d_residual_auxloss']:
+    if args.regime in ['conv1d_residual', 'conv1d_residual_auxloss']:
         ckpt_target = checkpoint_metadata.get('compression_target')
         if ckpt_target and ckpt_target != args.compression_target:
             raise ValueError(
@@ -657,16 +653,6 @@ def validate_and_load_init_checkpoint(checkpoint_metadata, args, logger):
         if ckpt_hybrid is not None and ckpt_hybrid != args.hybrid_text_tokens:
             logger.info(f"Hybrid text tokens: Stage 1 used {ckpt_hybrid}, Stage 2 uses {args.hybrid_text_tokens}")
 
-    if args.regime == 'randproj':
-        ckpt_proj_dim = checkpoint_metadata.get('projection_dim')
-        if ckpt_proj_dim and ckpt_proj_dim != args.projection_dim:
-            raise ValueError(
-                f"Projection dim mismatch: Stage 1 used {ckpt_proj_dim}, Stage 2 uses {args.projection_dim}.\n"
-                f"\n"
-                f"Add to your command:\n"
-                f"  --projection_dim {ckpt_proj_dim}"
-            )
-
     if args.regime == 'meanpool':
         ckpt_window = checkpoint_metadata.get('compression_window_size')
         if ckpt_window and ckpt_window != args.compression_window_size:
@@ -691,25 +677,6 @@ def validate_and_load_init_checkpoint(checkpoint_metadata, args, logger):
         if ckpt_hybrid is not None and ckpt_hybrid != args.hybrid_text_tokens:
             logger.info(f"Hybrid text tokens: Stage 1 used {ckpt_hybrid}, Stage 2 uses {args.hybrid_text_tokens}")
 
-    if args.regime == 'subsample':
-        ckpt_count = checkpoint_metadata.get('subsample_count')
-        if ckpt_count and ckpt_count != args.subsample_count:
-            raise ValueError(
-                f"Subsample count mismatch: Stage 1 used {ckpt_count}, Stage 2 uses {args.subsample_count}.\n"
-                f"\n"
-                f"Add to your command:\n"
-                f"  --subsample_count {ckpt_count}"
-            )
-
-        ckpt_strategy = checkpoint_metadata.get('subsample_strategy')
-        if ckpt_strategy and ckpt_strategy != args.subsample_strategy:
-            raise ValueError(
-                f"Subsample strategy mismatch: Stage 1 used '{ckpt_strategy}', Stage 2 uses '{args.subsample_strategy}'.\n"
-                f"\n"
-                f"This changes the compression pipeline behavior.\n"
-                f"Add to your command:\n"
-                f"  --subsample_strategy {ckpt_strategy}"
-            )
 
 
 # ============================================================================
@@ -822,7 +789,6 @@ def merge_args(checkpoint_args: dict, cli_args):
         'train_encoder', 'vision_mode',
         'compression_target', 'conv_kernel',
         'compression_window_size', 'compression_stride',
-        'subsample_count', 'subsample_strategy', 'projection_dim',
         'text_context_tokens',
         'aux_loss_weight',  # Affects loss computation
         'vision_prompt',    # Affects input tokenization

@@ -21,7 +21,7 @@ def manual_generate_with_cache(
     Manual autoregressive generation with KV-cache support.
 
     This function provides a unified generation implementation that works correctly
-    with custom embedding injection (e.g., mean pooling, subsampling, random projection).
+    with custom embedding injection (e.g., mean pooling, conv1d compression).
 
     Unlike HuggingFace's generate(), which has a bug when using custom inputs_embeds
     with multi-position injection, this implementation maintains the custom embeddings
@@ -34,7 +34,7 @@ def manual_generate_with_cache(
                     Used for shape/position tracking
                     NOTE: Currently only supports batch_size=1
         initial_embeds: Initial embeddings with shape (batch_size, seq_len, hidden_size)
-                       May contain custom injected embeddings (pooled, subsampled, etc.)
+                       May contain custom injected embeddings (pooled, compressed, etc.)
         images: List of (crop, global) image tuples for vision bypass
         images_spatial_crop: List of [rows, cols] for each batch item
         images_seq_mask: Optional mask for vision tokens (batch_size, seq_len)

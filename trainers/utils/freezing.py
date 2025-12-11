@@ -67,9 +67,8 @@ def get_encoder_params(model):
     Returns list of parameters belonging to the ENCODER (context compression):
     - Vision regime: SAM, ViT, and Projector components
     - All compression modules:
-      * Separator embeddings (meanpool_separator, subsample_separator, etc.)
-      * Random projection matrix (randproj_matrix)
-      * Conv1D pyramids (conv1d_pyramid, conv1d_residual_pyramid)
+      * Separator embeddings (meanpool_separator, conv1d_residual_separator, etc.)
+      * Conv1D pyramids (conv1d_residual_pyramid)
       * Conv1D output norms (conv1d_output_norm)
 
     Used for creating optimizer with separate encoder/decoder param groups.
@@ -86,20 +85,14 @@ def get_encoder_params(model):
                 encoder_params.append(param)
 
         # Compression module: separator embeddings (all regimes)
-        # Matches: meanpool_separator, subsample_separator, randproj_separator,
-        #          conv1d_separator, conv1d_residual_separator
+        # Matches: meanpool_separator, conv1d_residual_separator
         elif param_name.endswith('_separator'):
             if param.requires_grad:
                 encoder_params.append(param)
 
-        # Compression module: random projection matrix
-        elif param_name == 'randproj_matrix':
-            if param.requires_grad:
-                encoder_params.append(param)
-
         # Compression module: conv1d pyramid networks
-        # Matches: conv1d_pyramid.*, conv1d_residual_pyramid.*
-        elif param_name.startswith('conv1d_pyramid.') or param_name.startswith('conv1d_residual_pyramid.'):
+        # Matches: conv1d_residual_pyramid.*
+        elif param_name.startswith('conv1d_residual_pyramid.'):
             if param.requires_grad:
                 encoder_params.append(param)
 
@@ -124,7 +117,7 @@ def get_decoder_params(model):
 
     Excludes ALL encoder/compression components:
     - Vision encoder: SAM, ViT, Projector
-    - Compression modules: separators, conv pyramids, random projection, etc.
+    - Compression modules: separators, conv pyramids, etc.
 
     Used for creating optimizer with separate encoder/decoder param groups.
     """
@@ -142,12 +135,8 @@ def get_decoder_params(model):
         if param_name.endswith('_separator'):
             continue
 
-        # Exclude compression module: random projection matrix
-        if param_name == 'randproj_matrix':
-            continue
-
         # Exclude compression module: conv1d pyramid networks
-        if param_name.startswith('conv1d_pyramid.') or param_name.startswith('conv1d_residual_pyramid.'):
+        if param_name.startswith('conv1d_residual_pyramid.'):
             continue
 
         # Exclude compression module: conv1d output normalization

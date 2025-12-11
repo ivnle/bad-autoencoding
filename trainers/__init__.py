@@ -3,10 +3,7 @@
 # Import all trainer classes
 from .vision import VisionCompressionTrainer
 from .text import TextBaselineTrainer
-from .subsample import SubsampleCompressionTrainer
 from .meanpool import MeanPoolCompressionTrainer
-from .randproj import RandomProjectionCompressionTrainer
-from .conv1d import Conv1dPyramidCompressionTrainer
 from .conv1d_residual import Conv1dResidualCompressionTrainer
 from .conv1d_residual_auxloss import Conv1dResidualAuxLossTrainer
 
@@ -47,10 +44,7 @@ __all__ = [
     # Trainers
     'VisionCompressionTrainer',
     'TextBaselineTrainer',
-    'SubsampleCompressionTrainer',
     'MeanPoolCompressionTrainer',
-    'RandomProjectionCompressionTrainer',
-    'Conv1dPyramidCompressionTrainer',
     'Conv1dResidualCompressionTrainer',
     'Conv1dResidualAuxLossTrainer',
     # Configuration
