@@ -1003,7 +1003,7 @@ def train_epoch(
 
             loss, labels = trainer.forward(image, target, hybrid_text, objective=objective)
 
-        elif regime in ['text', 'meanpool', 'conv1d_residual', 'conv1d_residual_auxloss']:
+        elif regime in ['text', 'meanpool', 'conv1d_residual']:
             # Text-based regimes: extract context and target from batch
             context = batch['context'] if 'context' in batch else None
             continuation = batch['continuation'] if 'continuation' in batch else None
@@ -1335,7 +1335,7 @@ def evaluate(
 
                 loss, _ = trainer.forward(image, target, hybrid_text, objective=objective)
 
-            elif regime in ['text', 'meanpool', 'conv1d_residual', 'conv1d_residual_auxloss']:
+            elif regime in ['text', 'meanpool', 'conv1d_residual']:
                 # Text-based regimes: extract context and target from batch
                 context = batch['context']
                 continuation = batch['continuation']
@@ -1350,7 +1350,7 @@ def evaluate(
                 # Pass hybrid_text for regimes that support it
                 if regime in ['meanpool', 'conv1d_residual']:
                     loss, _ = trainer.forward(context, target, hybrid_text, objective=objective)
-                else:  # text, conv1d_residual_auxloss
+                else:  # text
                     loss, _ = trainer.forward(context, target, objective=objective)
 
             total_loss += loss.item()
@@ -1401,42 +1401,29 @@ def evaluate(
                             skip_special_tokens=True
                         )
 
-                    elif regime in ['meanpool', 'conv1d_residual', 'conv1d_residual_auxloss']:
+                    elif regime in ['meanpool', 'conv1d_residual']:
                         # Compression regimes: extract context from batch
                         context_tokens = batch['context'][sample_idx]
 
                         # Extract hybrid text if regime supports it
                         sample_hybrid = None
-                        if regime in ['meanpool', 'conv1d_residual']:
-                            hybrid_text_batch = batch.get('hybrid_text', None)
-                            if hybrid_text_batch is not None:
-                                sample_hybrid = hybrid_text_batch[sample_idx]
+                        hybrid_text_batch = batch.get('hybrid_text', None)
+                        if hybrid_text_batch is not None:
+                            sample_hybrid = hybrid_text_batch[sample_idx]
 
                         # Decode context for logging (show compressed representation)
                         # Generate text (meanpool/conv1d_residual need hybrid_text)
                         if regime == 'meanpool':
                             context_prompt = f"[Mean pooled from {context_tokens.shape[0]} tokens]"
-                            generated_text = trainer.generate_text(
-                                context_tokens,
-                                hybrid_text_tokens=sample_hybrid,
-                                max_new_tokens=max_generation_tokens,
-                                temperature=0.0  # Greedy for consistency
-                            )
-                        elif regime == 'conv1d_residual':
+                        else:  # conv1d_residual
                             context_prompt = f"[Conv1D Residual compressed from {context_tokens.shape[0]} tokens]"
-                            generated_text = trainer.generate_text(
-                                context_tokens,
-                                hybrid_text_tokens=sample_hybrid,
-                                max_new_tokens=max_generation_tokens,
-                                temperature=0.0  # Greedy for consistency
-                            )
-                        else:  # conv1d_residual_auxloss
-                            context_prompt = f"[Conv1D Residual+AuxLoss compressed from {context_tokens.shape[0]} tokens]"
-                            generated_text = trainer.generate_text(
-                                context_tokens,
-                                max_new_tokens=max_generation_tokens,
-                                temperature=0.0  # Greedy for consistency
-                            )
+
+                        generated_text = trainer.generate_text(
+                            context_tokens,
+                            hybrid_text_tokens=sample_hybrid,
+                            max_new_tokens=max_generation_tokens,
+                            temperature=0.0  # Greedy for consistency
+                        )
 
                         # Ground truth: depends on objective
                         if objective == 'reconstruction':
@@ -1730,22 +1717,6 @@ def main(args):
             regime='conv1d_residual'
         )
 
-    # Validate conv1d_residual_auxloss parameters
-    if args.regime == 'conv1d_residual_auxloss':
-        validate_conv1d_params(
-            args.compression_target,
-            args.conv_kernel,
-            regime='conv1d_residual_auxloss'
-        )
-
-        # Force reconstruction objective (regime only supports reconstruction)
-        if args.objective != 'reconstruction':
-            logger.warning(
-                f"conv1d_residual_auxloss only supports objective='reconstruction', "
-                f"overriding objective='{args.objective}'"
-            )
-            args.objective = 'reconstruction'
-
     # Validate init_from_checkpoint (mutually exclusive with resume)
     if args.init_from_checkpoint:
         if args.resume_from_checkpoint:
@@ -1951,21 +1922,6 @@ def main(args):
         logger.info(f"  Architecture: Residual blocks with skip connections")
         logger.info(f"  Kernel size: {args.conv_kernel}")
         logger.info(f"  Compression: 1000 → {trainer.compressed_tokens} tokens ({1000/args.compression_target:.2f}x)")
-
-    elif args.regime == 'conv1d_residual_auxloss':
-        from trainers.conv1d_residual_auxloss import Conv1dResidualAuxLossTrainer
-        trainer = Conv1dResidualAuxLossTrainer(
-            model, tokenizer,
-            compression_target=args.compression_target,
-            conv_kernel=args.conv_kernel,
-            device=args.device,
-            aux_loss_weight=args.aux_loss_weight
-        )
-        logger.info("Created Conv1D Residual AuxLoss trainer")
-        logger.info(f"  Architecture: Residual blocks with auxiliary losses at intermediate stages")
-        logger.info(f"  Auxiliary loss weight: {args.aux_loss_weight:.2f}")
-        logger.info(f"  Kernel size: {args.conv_kernel}")
-        logger.info(f"  Compression: 1000 → {args.compression_target} tokens ({1000/args.compression_target:.2f}x)")
 
     logger.info(f"Training objective: {args.objective}")
 

@@ -87,7 +87,6 @@ See `scripts/run_example.sh` for more training configurations, or run `python tr
 | `text` | Text baseline (no compression) |
 | `meanpool` | Sliding window mean pooling |
 | `conv1d_residual` | Conv1d with residual skip connections |
-| `conv1d_residual_auxloss` | Conv1d with residual + auxiliary losses (reconstruction only) |
 
 ### Text Regime Truncation
 

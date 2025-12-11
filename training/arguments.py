@@ -15,7 +15,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
 
     # Required arguments (unless resuming from checkpoint)
     parser.add_argument('--regime', type=str, required=False,
-                       choices=['vision', 'text', 'meanpool', 'conv1d_residual', 'conv1d_residual_auxloss'],
+                       choices=['vision', 'text', 'meanpool', 'conv1d_residual'],
                        help='Training regime: '
                             'vision (DeepSeek-OCR vision compression), '
                             'text (text baseline), '
@@ -82,10 +82,10 @@ def create_argument_parser() -> argparse.ArgumentParser:
                             'stride<window_size gives overlap (richer context). '
                             '(default: 9)')
     parser.add_argument('--compression_target', type=int, required=False,
-                       help='For conv1d_residual/conv1d_residual_auxloss regimes: target number of compressed tokens (required for these regimes). '
+                       help='For conv1d_residual regime: target number of compressed tokens (required). '
                             'Example: --compression_target 111 to match vision-small compression.')
     parser.add_argument('--conv_kernel', type=int, default=5,
-                       help='For conv1d_residual/conv1d_residual_auxloss regimes: kernel size for convolutional layers (default: 5). '
+                       help='For conv1d_residual regime: kernel size for convolutional layers (default: 5). '
                             'Must be odd. Larger kernels capture more local context.')
 
     # Timestamp (for consistent naming with shell script)
@@ -168,10 +168,6 @@ def create_argument_parser() -> argparse.ArgumentParser:
                        help='Allow objective switch when using --init_from_checkpoint (for two-stage training). '
                             'Example: Stage 1 used objective=reconstruction, Stage 2 uses objective=lm. '
                             'Without this flag, objective mismatch will cause an error.')
-    parser.add_argument('--aux_loss_weight', type=float, default=0.5,
-                       help='Weight for auxiliary losses in conv1d_residual_auxloss regime. '
-                            '0.0 = only final loss, 1.0 = only auxiliary losses, 0.5 = equal weight. '
-                            '(default: 0.5)')
 
     # DataLoader settings
     parser.add_argument('--num_workers', type=int, default=4,

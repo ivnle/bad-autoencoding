@@ -4,7 +4,6 @@ This module provides a single source of truth for generating consistent names
 across the bash wrapper and Python training script. Previously, naming logic
 was duplicated between run_production_train.sh and train.py, leading to:
 - Naming inconsistencies (conv1d_residual 't' vs 'r' prefix, etc.)
-- Missing support for conv1d_residual_auxloss in bash
 - Maintenance burden (changes needed in 2 places)
 
 Now both scripts use these functions to ensure OUTPUT_DIR and wandb_run_name
@@ -38,8 +37,7 @@ def generate_run_name(
     """Generate consistent run name for output directory and W&B.
 
     Args:
-        regime: Training regime (vision, text, meanpool, conv1d_residual,
-               conv1d_residual_auxloss)
+        regime: Training regime (vision, text, meanpool, conv1d_residual)
         objective: Training objective (lm or reconstruction)
         timestamp: Timestamp string (YYYYMMDD_HHMMSS). If None, auto-generated.
         **kwargs: Regime-specific parameters
@@ -95,16 +93,6 @@ def generate_run_name(
         name_parts.append(f'k{conv_kernel}')
         if hybrid_text_tokens and hybrid_text_tokens > 0:
             name_parts.append(f'hybrid{hybrid_text_tokens}')
-
-    elif regime == 'conv1d_residual_auxloss':
-        # Conv1D Residual AuxLoss regime: include compression target and kernel size
-        # UNIFIED: Use 't' prefix (matching conv1d_residual for consistency)
-        # FIXED: This regime was previously missing from bash OUTPUT_DIR logic (bug)
-        if compression_target is None or conv_kernel is None:
-            raise ValueError("compression_target and conv_kernel required for conv1d_residual_auxloss regime")
-        name_parts.append(f't{compression_target}')
-        name_parts.append(f'k{conv_kernel}')
-        # Note: auxloss doesn't support hybrid mode
 
     else:
         raise ValueError(f"Unknown regime: {regime}")
@@ -179,11 +167,10 @@ def generate_from_args(args: argparse.Namespace) -> tuple[Path, str]:
         kwargs['compression_window_size'] = args.compression_window_size
         kwargs['compression_stride'] = args.compression_stride
         kwargs['hybrid_text_tokens'] = args.hybrid_text_tokens
-    elif args.regime in ['conv1d_residual', 'conv1d_residual_auxloss']:
+    elif args.regime == 'conv1d_residual':
         kwargs['compression_target'] = args.compression_target
         kwargs['conv_kernel'] = args.conv_kernel
-        if args.regime == 'conv1d_residual':
-            kwargs['hybrid_text_tokens'] = args.hybrid_text_tokens
+        kwargs['hybrid_text_tokens'] = args.hybrid_text_tokens
 
     run_name = generate_run_name(**kwargs)
     output_dir = Path('outputs') / run_name

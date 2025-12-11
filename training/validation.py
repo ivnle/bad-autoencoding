@@ -45,8 +45,7 @@ def validate_conv1d_params(
     """
     Validate compression_target and conv_kernel parameters for conv1d regimes.
 
-    This function consolidates validation logic that was previously duplicated
-    across conv1d, conv1d_residual, and conv1d_residual_auxloss regimes.
+    This function consolidates validation logic for the conv1d_residual regime.
 
     Args:
         compression_target: Target number of compressed tokens (required)

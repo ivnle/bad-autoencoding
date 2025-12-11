@@ -5,7 +5,6 @@ from .vision import VisionCompressionTrainer
 from .text import TextBaselineTrainer
 from .meanpool import MeanPoolCompressionTrainer
 from .conv1d_residual import Conv1dResidualCompressionTrainer
-from .conv1d_residual_auxloss import Conv1dResidualAuxLossTrainer
 
 # Import configuration
 from .config import (
@@ -46,7 +45,6 @@ __all__ = [
     'TextBaselineTrainer',
     'MeanPoolCompressionTrainer',
     'Conv1dResidualCompressionTrainer',
-    'Conv1dResidualAuxLossTrainer',
     # Configuration
     'IMAGE_TOKEN_ID',
     'VISION_MODES',

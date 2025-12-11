@@ -613,7 +613,7 @@ def validate_and_load_init_checkpoint(checkpoint_metadata, args, logger):
         )
 
     # Validate regime-specific hyperparameters
-    if args.regime in ['conv1d_residual', 'conv1d_residual_auxloss']:
+    if args.regime == 'conv1d_residual':
         ckpt_target = checkpoint_metadata.get('compression_target')
         if ckpt_target and ckpt_target != args.compression_target:
             raise ValueError(
@@ -790,7 +790,6 @@ def merge_args(checkpoint_args: dict, cli_args):
         'compression_target', 'conv_kernel',
         'compression_window_size', 'compression_stride',
         'text_context_tokens',
-        'aux_loss_weight',  # Affects loss computation
         'vision_prompt',    # Affects input tokenization
         'encoder_lr'        # Differential learning rate for encoder
     }
