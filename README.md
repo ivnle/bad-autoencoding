@@ -5,7 +5,6 @@
 
 Code for reproducing experiments from our paper investigating whether vision-based context compression (as proposed in DeepSeek-OCR) can serve as an effective compression mechanism for LLM context.
 
-- [Model checkpoints](https://huggingface.co/ivnle/bad-autoencoding)
 - [Documentation on the hype surrounding DeepSeek-OCR](HYPE.md)
 
 ## Installation
