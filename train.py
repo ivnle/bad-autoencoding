@@ -73,8 +73,8 @@ from trainers.config import (
     VISION_TOKEN_COUNT,
 )
 
-# Import reconstruction metrics from Fox
-from Fox.eval_tools.eval_ocr_test import cal_per_metrics
+# Import text similarity metrics for qualitative evaluation
+from training.metrics import cal_per_metrics
 
 # Import Arrow-backed datasets for memory-efficient loading
 from training.arrow_datasets import ArrowTextDataset, ArrowVisionDataset

@@ -1,7 +1,7 @@
 # Debug directory (temporary/throwaway scripts)
 debug/
 
-# Fox benchmark repo (cloned from https://github.com/ucaslcl/Fox)
+# Fox benchmark repo (optional, metrics are vendored in training/metrics.py)
 Fox/
 
 # Results directory (evaluation outputs)

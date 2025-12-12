@@ -119,14 +119,6 @@ Training logs to W&B by default when `--use_wandb` is passed. Configure with:
 export WANDB_PROJECT="bad-autoencoding"  # Optional, defaults to bad-autoencoding
 ```
 
-## External Dependencies
-
-Training uses the [Fox](https://github.com/ucaslcl/Fox) benchmark for reconstruction metrics:
-
-```bash
-git clone https://github.com/ucaslcl/Fox.git Fox
-```
-
 ## Vendor Modifications
 
 This repository includes a modified version of DeepSeek-OCR (`vendor/deepseek_ocr/`) with two changes:
