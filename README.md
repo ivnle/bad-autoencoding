@@ -105,6 +105,26 @@ uv run python train.py \
     --output_dir ./outputs/text_truncated_512
 ```
 
+## Reproducing Paper Results
+
+The paper results used these hyperparameters:
+
+| Parameter | Value |
+|-----------|-------|
+| Effective batch size | 48 |
+| Learning rate | 1e-4 |
+| Weight decay | 0.01 |
+| Warmup ratio | 0.1 |
+| Max grad norm | 1.0 |
+| Dataset | 510k samples (500k train + 10k val) |
+
+To match effective batch size on your hardware:
+- **80GB GPU (A100)**: `--batch_size 16 --gradient_accumulation_steps 3`
+- **48GB GPU (A6000)**: `--batch_size 8 --gradient_accumulation_steps 6`
+- **24GB GPU (4090)**: `--batch_size 1 --gradient_accumulation_steps 48`
+
+The Quick Start examples use conservative settings (`batch_size=1`) for compatibility with smaller GPUs.
+
 ## Requirements
 
 - **GPU**: 24-32GB VRAM recommended (memory optimizations enabled by default)
