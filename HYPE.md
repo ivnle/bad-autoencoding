@@ -25,7 +25,7 @@ This document collects claims about DeepSeek-OCR's potential for context compres
 
 **To be fair**, the authors do acknowledge limitations in the conclusion: "Of course, OCR alone is insufficient to fully validate true context optical compression." But this caveat appears only in the conclusion, while the claims above dominate the abstract and introduction—where most readers stop.
 
-[Original paper](https://arxiv.org/abs/2501.05220)
+[Original paper](https://arxiv.org/abs/2510.18234)
 
 ---
 
