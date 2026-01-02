@@ -3,6 +3,10 @@
 [![arXiv](https://img.shields.io/badge/arXiv-2512.03643-b31b1b.svg)](https://arxiv.org/abs/2512.03643)
 [![HuggingFace](https://img.shields.io/badge/HuggingFace-Models-yellow)](https://huggingface.co/ivnle/bad-autoencoding)
 
+![Optical Context Compression Architecture](assets/hero.png)
+
+*Checkpoints uploading in progress*
+
 Code for reproducing experiments from our paper investigating whether vision-based context compression (as proposed in DeepSeek-OCR) can serve as an effective compression mechanism for LLM context.
 
 - [Documentation on the hype surrounding DeepSeek-OCR](HYPE.md)
